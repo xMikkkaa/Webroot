@@ -445,30 +445,28 @@ function initNavigationUI() {
         div.className = 'view-section';
         
         if (v.id === 'view-tweak') {
+            div.innerHTML = `<div class="container"><div class="content"><div class="placeholder-box" style="padding-bottom: 0;"><h2>${v.title}</h2></div></div></div>`;
+            const content = div.querySelector('.content');
+
+            // RAM card
+            const ramDiv = document.createElement('div');
+            ramDiv.className = 'bypass-bg';
+            ramDiv.innerHTML = generateRamMonitorHtml();
+            content.appendChild(ramDiv);
+            setTimeout(initRamMonitor, 200);
+
             const bypassEl = dashboardView.querySelector('.bypass-bg');
             if (bypassEl) {
-                div.innerHTML = `<div class="container"><div class="content"><div class="placeholder-box" style="padding-bottom: 0;"><h2>${v.title}</h2></div></div></div>`;
-                const content = div.querySelector('.content');
-
-                // RAM card
-                const ramDiv = document.createElement('div');
-                ramDiv.className = 'bypass-bg';
-                ramDiv.innerHTML = generateRamMonitorHtml();
-                content.appendChild(ramDiv);
-                setTimeout(initRamMonitor, 200);
-
                 bypassEl.style.margin = '0 0 12px 0';
                 content.appendChild(bypassEl);
-
-                // Opt toggle
-                const optDiv = document.createElement('div');
-                optDiv.className = 'bypass-bg';
-                optDiv.innerHTML = generateToggleHtml('Optimize Game Thread', '🎮', 'gameOpt');
-                content.appendChild(optDiv);
-                setTimeout(initGameOptLogic, 200);
-            } else {
-                div.innerHTML = `<div class="placeholder-box"><h2>${v.title}</h2><p>${v.content}</p></div>`;
             }
+
+            // Opt toggle
+            const optDiv = document.createElement('div');
+            optDiv.className = 'bypass-bg';
+            optDiv.innerHTML = generateToggleHtml('Optimize Game Thread', '🎮', 'gameOpt');
+            content.appendChild(optDiv);
+            setTimeout(initGameOptLogic, 200);
         } else if (v.id === 'view-app-manager') {
             div.innerHTML = `
                 <div class="container">
@@ -851,7 +849,7 @@ function confirmFlush() {
     closeFlushModal();
     if (typeof ksu !== 'undefined') {
         try {
-            const cmd = "sync; echo 3 > /proc/sys/vm/drop_caches; EXCLUDE='kernel|ksu|webui|android|termux|launcher|io.github.a13e300.ksuwebui'; for pkg in $(pm list packages -3 | cut -d':' -f2); do if ! echo \"$pkg\" | grep -iqE \"$EXCLUDE\"; then am force-stop \"$pkg\"; fi; done &";
+            const cmd = "(sync; echo 3 > /proc/sys/vm/drop_caches; [ -f /proc/sys/vm/compact_memory ] && echo 1 > /proc/sys/vm/compact_memory; fstrim -v /data; fstrim -v /cache; fstrim -v /system; for p in $(pm list packages -3 | cut -d: -f2); do case \"$p\" in *kernel*|*ksu*|*webui*|*android*|*termux*|*launcher*|*bin.mt.plus.canary*|*io.github.a13e300.ksuwebui*) continue ;; esac; am force-stop \"$p\"; done) &";
             ksu.exec(cmd);
             showToast('♻️ Flushing RAM...', false);
             
@@ -1055,7 +1053,7 @@ function removeCurrentApp() {
         try {
             // Remove logic
             
-            const cmd = `grep -v "^${pkg}_" '${path}' | grep -v "^${pkg}$" > '${path}.tmp' && mv '${path}.tmp' '${path}'`;
+            const cmd = `sed -i "/^${pkg}_/d" '${path}'; sed -i "/^${pkg}$/d" '${path}'`;
             
             ksu.exec(cmd);
             showToast(`Removed ${pkg}`, false);
